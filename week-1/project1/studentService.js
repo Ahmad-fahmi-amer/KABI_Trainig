@@ -4,25 +4,19 @@ import {
   getAll,
   getStudentById,
   updateStudent,
-} from "./repositry.js";
+} from "./jsonRepo/repositry.js";
 import { validateStudent, validateUpdateData } from "./validator.js";
 
 export async function createStudent(user) {
-  const { name, age, major } = user;
   validateStudent(user);
-  const students = await getAll();
-  const newId =
-    students.length === 0 ? 1 : students[students.length - 1].id + 1;
 
-  const student = { id: newId, ...user };
-  create(student);
+  const student = await create(user);
 
   return { message: "student was created", student };
 }
 
 export async function getAllStudents() {
-  const students = await getAll();
-  return students;
+  return await getAll();
 }
 
 export async function getById(id) {
@@ -34,7 +28,7 @@ export async function getById(id) {
 }
 
 export async function remove(id) {
-  const student = await deleteById(parseInt(id));
+  const student = await deleteById(id);
 
   return { message: "user was deleted", student };
 }

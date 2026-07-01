@@ -1,8 +1,11 @@
-import students from "./students.js";
+import students from "./arrayRepo/students.js";
 
 export function create(student) {
-  students.push(student);
-  return { ...student };
+  const newId =
+    students.length === 0 ? 1 : students[students.length - 1].id + 1;
+  students.push({ id: newId, ...student });
+
+  return { id: newId, ...student };
 }
 export function getAll() {
   return [...students];

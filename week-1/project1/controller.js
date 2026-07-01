@@ -11,18 +11,16 @@ export async function controller(method, rl) {
     case "create":
       const newUser = await createStudent(await getCreateData(rl));
       console.log(newUser);
-
       break;
 
     case "getall":
       const students = await getAllStudents();
       console.log(students);
-
       break;
 
     case "getbyid":
       const student = await getById(await getId(rl));
-      return student;
+      console.log(student);
       break;
 
     case "delete":

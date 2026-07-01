@@ -4,7 +4,7 @@ export async function run(rl) {
   while (true) {
     try {
       console.log(
-        "available methods [create,getAll,getById,deleteById,update,exit]",
+        "available methods [create,getAll,getById,delete,update,exit]",
       );
       const methods = ["create", "getall", "getbyid", "delete", "update"];
 
