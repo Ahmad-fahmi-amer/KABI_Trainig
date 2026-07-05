@@ -1,0 +1,11 @@
+{
+  "name": "students",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.0.0"
+  }
+}
