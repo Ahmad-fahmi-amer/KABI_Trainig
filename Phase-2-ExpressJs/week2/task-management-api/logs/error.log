@@ -1,0 +1,9 @@
+[ERROR] 179fa12f-af49-40ea-941c-72834affbf99 - GET - /api/v1/users - userService.getAllUsers is not a function
+[ERROR] 25442eea-5bc9-40c2-9c40-c79ef965bcfd - GET - /api/v1/users/a@g.com - user not found
+[ERROR] 87319c87-874c-4a45-9d80-be35bbb7dfa5 - GET - /api/v1/users/a@g.com - user not found
+[ERROR] f9f037e3-3f2c-453c-a48a-e430cef70bdc - GET - /api/v1/users/a@g.com - user not found
+[ERROR] a0d29958-2653-488d-ac97-7cf3d7b3e208 - POST - /api/v1/users - tasks is not defined
+[ERROR] 54fa5467-10dd-432f-90f9-04a14b8499d8 - POST - /api/v1/users - tasks is not defined
+[ERROR] f76bf42c-9c81-4ba4-9a0c-9b0fe8fda6be - POST - /api/v1/users - tasks is not defined
+[ERROR] 08f57b0d-8066-42b8-9024-66dface76ff4 - DELETE - /api/v1/users/5 - user not found
+[ERROR] 79ffcade-ce68-43fd-902c-1b089566ed29 - POST - /api/v1/auth/register - email was used

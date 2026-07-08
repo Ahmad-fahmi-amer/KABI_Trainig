@@ -1,0 +1,42 @@
+[INFO] [179fa12f-af49-40ea-941c-72834affbf99] GET /api/v1/users - START
+[INFO] [179fa12f-af49-40ea-941c-72834affbf99] GET /api/v1/users 500 8ms - END
+[INFO] [06140d5b-fcb3-4cfe-bb67-9faedbe8f1be] GET /api/v1/users - START
+[INFO] [06140d5b-fcb3-4cfe-bb67-9faedbe8f1be] GET /api/v1/users 200 8ms - END
+[INFO] [36ffb438-ed8e-4232-9a54-6cc2718209b3] GET /api/v1/users/2 - START
+[INFO] [36ffb438-ed8e-4232-9a54-6cc2718209b3] GET /api/v1/users/2 200 2ms - END
+[INFO] [25442eea-5bc9-40c2-9c40-c79ef965bcfd] GET /api/v1/users/a@g.com - START
+[INFO] [25442eea-5bc9-40c2-9c40-c79ef965bcfd] GET /api/v1/users/a@g.com 404 1ms - END
+[INFO] [87319c87-874c-4a45-9d80-be35bbb7dfa5] GET /api/v1/users/a@g.com - START
+[INFO] [87319c87-874c-4a45-9d80-be35bbb7dfa5] GET /api/v1/users/a@g.com 404 7ms - END
+[INFO] [f9f037e3-3f2c-453c-a48a-e430cef70bdc] GET /api/v1/users/a@g.com - START
+[INFO] [f9f037e3-3f2c-453c-a48a-e430cef70bdc] GET /api/v1/users/a@g.com 404 9ms - END
+[INFO] [aabbc0b7-127b-494d-b667-e3b4f7a6478e] GET /api/v1/users/email/a@g.com - START
+[INFO] [aabbc0b7-127b-494d-b667-e3b4f7a6478e] GET /api/v1/users/email/a@g.com 200 7ms - END
+[INFO] [a0d29958-2653-488d-ac97-7cf3d7b3e208] POST /api/v1/users - START
+[INFO] [a0d29958-2653-488d-ac97-7cf3d7b3e208] POST /api/v1/users 500 13ms - END
+[INFO] [54fa5467-10dd-432f-90f9-04a14b8499d8] POST /api/v1/users - START
+[INFO] [54fa5467-10dd-432f-90f9-04a14b8499d8] POST /api/v1/users 500 2ms - END
+[INFO] [f76bf42c-9c81-4ba4-9a0c-9b0fe8fda6be] POST /api/v1/users - START
+[INFO] [f76bf42c-9c81-4ba4-9a0c-9b0fe8fda6be] POST /api/v1/users 500 19ms - END
+[INFO] [d4990faf-b0ed-4244-b215-d895f9c09b7a] POST /api/v1/users - START
+[INFO] [d4990faf-b0ed-4244-b215-d895f9c09b7a] POST /api/v1/users 201 18ms - END
+[INFO] [e0b5e13b-3e81-43df-9620-79f93112f23c] GET /api/v1/users - START
+[INFO] [e0b5e13b-3e81-43df-9620-79f93112f23c] GET /api/v1/users 200 3ms - END
+[INFO] [35712a42-681a-4203-a143-e0e80cb245d0] PUT /api/v1/users/5 - START
+[INFO] [35712a42-681a-4203-a143-e0e80cb245d0] PUT /api/v1/users/5 200 2ms - END
+[INFO] [270c3d43-2e1a-4853-8415-977868703193] GET /api/v1/users - START
+[INFO] [270c3d43-2e1a-4853-8415-977868703193] GET /api/v1/users 200 1ms - END
+[INFO] [08f57b0d-8066-42b8-9024-66dface76ff4] DELETE /api/v1/users/5 - START
+[INFO] [08f57b0d-8066-42b8-9024-66dface76ff4] DELETE /api/v1/users/5 404 3ms - END
+[INFO] [3b409779-f3cf-4952-99e3-ba2f514632aa] DELETE /api/v1/users/5 - START
+[INFO] [3b409779-f3cf-4952-99e3-ba2f514632aa] DELETE /api/v1/users/5 200 8ms - END
+[INFO] [87fdc57f-9fbf-49d0-8a35-20e121eb4b34] GET /api/v1/users - START
+[INFO] [87fdc57f-9fbf-49d0-8a35-20e121eb4b34] GET /api/v1/users 200 2ms - END
+[INFO] [c9ecdc1a-c8eb-4437-8098-7a6686498c40] POST /api/v1/auth/register - START
+[INFO] [c9ecdc1a-c8eb-4437-8098-7a6686498c40] POST /api/v1/auth/register 201 17ms - END
+[INFO] [79ffcade-ce68-43fd-902c-1b089566ed29] POST /api/v1/auth/register - START
+[INFO] [79ffcade-ce68-43fd-902c-1b089566ed29] POST /api/v1/auth/register 400 3ms - END
+[INFO] [7a78c85b-8a15-4194-9463-1ba7ae0fb2b3] POST /api/v1/auth/login - START
+[INFO] [7a78c85b-8a15-4194-9463-1ba7ae0fb2b3] POST /api/v1/auth/login 200 2ms - END
+[INFO] [9e40815c-2485-4827-9728-03c15eb19e7f] POST /api/v1/auth/register - START
+[INFO] [9e40815c-2485-4827-9728-03c15eb19e7f] POST /api/v1/auth/register 201 1ms - END
