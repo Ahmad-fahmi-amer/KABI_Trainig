@@ -1,0 +1,11 @@
+import { Router } from "express";
+import ROLES from "../../../../constants/roles.js";
+import protect from "../../../../middlewares/auth/auth.middleware.js";
+import authorize from "../../../../middlewares/auth/authorize.middleware.js";
+import asyncHandler from "../../../../middlewares/core/asyncHandler.js";
+import validate from "../../../../middlewares/validation/validation.js";
+import { listActivityLogsSchema } from "./schemas/activity-log.schema.js";
+import { list } from "./activity-log.controller.js";
+const router = Router();
+router.get("/", protect, authorize(ROLES.SYSTEM_ADMIN), validate({ query: listActivityLogsSchema }), asyncHandler(list));
+export default router;

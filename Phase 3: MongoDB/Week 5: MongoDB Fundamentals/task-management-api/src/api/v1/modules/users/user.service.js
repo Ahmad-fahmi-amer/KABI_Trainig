@@ -1,110 +1,213 @@
-import { email } from "zod";
-import { ConflictError, NotFoundError } from "../../../../errors/index.js";
-import userRepository from "./user.repository.js";
 import bcrypt from "bcrypt";
+import crypto from "node:crypto";
 import ROLES from "../../../../constants/roles.js";
+import USER_STATUS from "../../../../constants/user-status.js";
+import {
+  ACTIVITY_ACTION,
+  ACTIVITY_ENTITY_TYPE,
+} from "../../../../constants/activity.js";
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+} from "../../../../errors/index.js";
+import { runInTransaction } from "../../../../database/unit-of-work.js";
+import { env } from "../../../../config/env.js";
+import activityRepository from "../activity-logs/activity-log.repository.js";
+import authSessionRepository from "../auth-sessions/auth-session.repository.js";
+import teamRepository from "../teams/team.repository.js";
+import passwordResetRepository from "../password-reset-tokens/password-reset-token.repository.js";
+import userRepository from "./user.repository.js";
+import mongoose from "mongoose";
 
-async function getAllUsers() {
-  return await userRepository.findAll();
-}
-async function getUserById(id) {
-  const user = await userRepository.findById(id);
-  if (!user) {
-    throw new NotFoundError("user not found");
-  }
+async function requireUser(id, session) {
+  const user = await userRepository.findUserById(id, session);
+  if (!user) throw new NotFoundError("User not found");
   return user;
 }
+
 async function findUserById(id) {
-  const user = (await userRepository.findById(id)) || null;
-  return user;
+  return userRepository.findUserById(id);
 }
-async function getUserByEmail(email) {
-  const user = (await userRepository.findByEmail(email)) || null;
-  return user;
+
+async function getUserById(id) {
+  return requireUser(id);
 }
-async function createUser(data) {
-  const { name, email, password } = data;
-  const users = await userRepository.findAll();
 
-  const emailExist = await userRepository.findByEmail(email);
+async function getAllUsers(query, actor) {
+  const scopedQuery =
+    actor.role === ROLES.TEAM_MANAGER
+      ? { ...query, teamId: String(actor.teamId) }
+      : query;
+  return userRepository.findUsers(scopedQuery);
+}
 
-  if (emailExist) {
-    throw new ConflictError("email was used");
+async function validateAssignment(data, session) {
+  if (
+    data.teamId &&
+    !(await teamRepository.findTeamById(data.teamId, session))
+  ) {
+    throw new NotFoundError("Team not found");
   }
-  const nextId =
-    users.length > 0 ? Math.max(...users.map((user) => user.id)) + 1 : 1;
-
-  const hashedPassword = await hashPassword(password);
-  const user = {
-    ...data,
-    id: nextId,
-    password: hashedPassword,
-    isActive: data.isActive ?? true,
-    role: data.role ?? ROLES.USER,
-  };
-
-  return await userRepository.create(user);
-}
-async function updateUser(id, data) {
-  const user = await userRepository.findById(id);
-  if (!user) {
-    throw new NotFoundError("user not found");
+  if (
+    data.status === USER_STATUS.ACTIVE &&
+    data.role !== ROLES.SYSTEM_ADMIN &&
+    !data.teamId
+  ) {
+    throw new ConflictError("Active managers and employees require a team");
   }
-  if (data.email) {
-    const emailExist = await userRepository.findByEmail(data.email);
-    if (emailExist && data.email !== user.email) {
-      throw new ConflictError("email was used");
+}
+
+async function createUser(data, actor, context = {}) {
+  if (await userRepository.existsUserByEmail(data.email))
+    throw new ConflictError("Email is already used");
+  const status =
+    data.status ??
+    (data.teamId || data.role === ROLES.SYSTEM_ADMIN
+      ? USER_STATUS.ACTIVE
+      : USER_STATUS.INACTIVE);
+  const input = { ...data, status };
+  await validateAssignment(input);
+  const passwordHash = await bcrypt.hash(data.password, 12);
+  delete input.password;
+
+  return runInTransaction(async (session) => {
+    const user = await userRepository.createUser(
+      {
+        ...input,
+        passwordHash,
+        createdBy: actor._id,
+      },
+      session,
+    );
+    await activityRepository.appendActivityLog(
+      {
+        actorId: actor._id,
+        entityType: ACTIVITY_ENTITY_TYPE.USER,
+        entityId: user._id,
+        action: ACTIVITY_ACTION.USER_CREATED,
+        requestId: context.requestId,
+      },
+      session,
+    );
+    return user;
+  });
+}
+
+async function updateProfile(id, data) {
+  await requireUser(id);
+  return userRepository.updateUserProfile(id, data);
+}
+
+async function updateUser(id, data, actor, context = {}) {
+  const current = await requireUser(id);
+  if (
+    String(current._id) === String(actor._id) &&
+    data.status === USER_STATUS.INACTIVE
+  ) {
+    throw new ForbiddenError("Administrators cannot deactivate themselves");
+  }
+  await validateAssignment({ ...current, ...data });
+  return runInTransaction(async (session) => {
+    const user = await userRepository.updateUserProfile(id, data, session);
+    await activityRepository.appendActivityLog(
+      {
+        actorId: actor._id,
+        entityType: ACTIVITY_ENTITY_TYPE.USER,
+        entityId: current._id,
+        action:
+          data.status && data.status !== current.status
+            ? ACTIVITY_ACTION.USER_STATUS_CHANGED
+            : ACTIVITY_ACTION.USER_UPDATED,
+        changedFields: Object.keys(data),
+        requestId: context.requestId,
+      },
+      session,
+    );
+    if (data.status === USER_STATUS.INACTIVE) {
+      await authSessionRepository.revokeAllForUser(id, session);
     }
-  }
+    return user;
+  });
+}
 
-  return await userRepository.update(id, data);
-}
-async function deleteUser(id) {
-  const user = await userRepository.findById(id);
-  if (!user) {
-    throw new NotFoundError("user not found");
-  }
-  return await userRepository.remove(id);
-}
-async function hashPassword(password) {
-  // return await bcrypt.hash(password, 10);
-  return password;
-}
-async function comparePassword(pass1, pass2) {
-  // if (!(await bcrypt.compare(pass1, pass2))) {
-  //   throw new NotFoundError("invalid email or password");
-  // }
-  if (pass1 !== pass2) {
-    throw new NotFoundError("invalid credentials");
-  }
-}
 async function changePassword(id, { currentPassword, newPassword }) {
-  const user = await userRepository.findById(id);
-  if (!user) {
-    throw new NotFoundError("user not found");
+  const authUser = await userRepository.findAuthUserByEmail(
+    (await requireUser(id)).email,
+  );
+  if (!(await bcrypt.compare(currentPassword, authUser.passwordHash))) {
+    throw new UnauthorizedError("Current password is incorrect");
   }
-  await comparePassword(user.password, currentPassword);
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await runInTransaction(async (session) => {
+    await userRepository.updatePasswordHash(id, passwordHash, session);
+    await authSessionRepository.revokeAllForUser(id, session);
+    await activityRepository.appendActivityLog(
+      {
+        actorId: id,
+        entityType: ACTIVITY_ENTITY_TYPE.USER,
+        entityId: id,
+        action: ACTIVITY_ACTION.USER_PASSWORD_CHANGED,
+      },
+      session,
+    );
+  });
+}
 
-  const hashedPassword = await hashPassword(newPassword);
-  const updated = {
-    password: hashedPassword,
-    passwordChangedAt: new Date(),
-  };
-  return await userRepository.update(id, updated);
+async function resetPassword(id, newPassword, actor) {
+  await requireUser(id);
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await runInTransaction(async (session) => {
+    await userRepository.updatePasswordHash(id, passwordHash, session);
+    await authSessionRepository.revokeAllForUser(id, session);
+    await activityRepository.appendActivityLog(
+      {
+        actorId: actor._id,
+        entityType: ACTIVITY_ENTITY_TYPE.USER,
+        entityId: id,
+        action: ACTIVITY_ACTION.USER_PASSWORD_CHANGED,
+        changedFields: ["passwordHash"],
+      },
+      session,
+    );
+  });
 }
-async function updateMetaData(id, data) {
-  await userRepository.updateMetadata(id, data);
+
+async function issuePasswordResetToken(id, actor) {
+  await requireUser(id);
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(
+    Date.now() + env.PASSWORD_RESET_EXPIRES_MINUTES * 60_000,
+  );
+  await runInTransaction(async (session) => {
+    await passwordResetRepository.revokeActiveForUser(id, session);
+    const reset = await passwordResetRepository.create(
+      { userId: id, tokenHash, expiresAt, createdBy: actor._id },
+      session,
+    );
+    await activityRepository.appendActivityLog(
+      {
+        actorId: actor._id,
+        entityType: ACTIVITY_ENTITY_TYPE.PASSWORD_RESET,
+        entityId: reset._id,
+        action: ACTIVITY_ACTION.PASSWORD_RESET_ISSUED,
+      },
+      session,
+    );
+  });
+  return { token, expiresAt };
 }
-const userService = {
-  getAllUsers,
-  getUserById,
-  getUserByEmail,
-  createUser,
-  updateUser,
-  deleteUser,
-  comparePassword,
-  changePassword,
-  updateMetaData,
+
+export default {
   findUserById,
+  getUserById,
+  getAllUsers,
+  createUser,
+  updateProfile,
+  updateUser,
+  changePassword,
+  resetPassword,
+  issuePasswordResetToken,
 };
-export default userService;

@@ -11,7 +11,7 @@ const logger = createLogger({
   transports: appTransports,
   exitOnError: false,
   defaultMeta: {
-    service: "recruitment-api",
+    service: "task-management-api",
   },
 });
 export default logger;

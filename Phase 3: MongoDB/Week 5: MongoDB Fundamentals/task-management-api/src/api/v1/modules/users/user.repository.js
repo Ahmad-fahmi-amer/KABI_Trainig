@@ -1,65 +1,105 @@
-import { users } from "../../../../../data/users.data.js";
-function findAll() {
-  return users;
-}
-function findById(id) {
-  const user = users.find((user) => user.id === id) || null;
-  return user;
+import User from "./user.model.js";
+
+function withSession(query, session) {
+  return session ? query.session(session) : query;
 }
 
-function findByEmail(email) {
-  const user = users.find((user) => user.email === email) || null;
-  return user;
+async function createUser(data, session) {
+  const user = new User(data);
+  await user.save({ session });
+  return user.toObject();
 }
 
-function create(user) {
-  user.createdAt = new Date();
-  user.updatedAt = new Date();
-  users.push(user);
-  return user;
+async function findUserById(id, session) {
+  return withSession(User.findById(id).lean(), session);
 }
 
-function update(id, updates) {
-  const user = users.find((user) => user.id === id);
-
-  if (!user) {
-    return null;
-  }
-
-  updates.updatedAt = new Date();
-
-  Object.assign(user, updates);
-
-  return user;
+async function findAuthUserByEmail(email, session) {
+  return withSession(
+    User.findOne({ email }).select("+passwordHash").lean(),
+    session,
+  );
 }
 
-function updateMetadata(id, updates) {
-  const user = users.find((user) => user.id === id);
-
-  if (!user) {
-    return null;
-  }
-
-  Object.assign(user, updates);
-
-  return user;
+async function existsUserByEmail(email, session) {
+  return Boolean(await withSession(User.exists({ email }), session));
 }
-function remove(id) {
-  const index = users.findIndex((user) => user.id === id);
 
-  if (index === -1) {
-    return null;
-  }
-
-  return users.splice(index, 1)[0];
+async function countUsers(session) {
+  return withSession(User.countDocuments(), session);
 }
-const userRepository = {
-  findAll,
-  findById,
-  findByEmail,
-  update,
-  create,
-  remove,
-  updateMetadata,
+
+async function findUsers(query) {
+  const { search, role, teamId, status, page, limit, sortBy, sortOrder } =
+    query;
+  const filter = {};
+
+  if (search) filter.$text = { $search: search };
+  if (role) filter.role = role;
+  if (teamId) filter.teamId = teamId;
+  if (status) filter.status = status;
+
+  const skip = (page - 1) * limit;
+  const sort = { [sortBy]: sortOrder === "ASC" ? 1 : -1 };
+
+  const [items, total] = await Promise.all([
+    User.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+    User.countDocuments(filter),
+  ]);
+
+  return { items, page, limit, total, totalPages: Math.ceil(total / limit) };
+}
+
+async function updateUserProfile(id, data, session) {
+  return withSession(
+    User.findByIdAndUpdate(
+      id,
+      { $set: data },
+      { new: true, runValidators: true },
+    ).lean(),
+    session,
+  );
+}
+
+async function updateUserRole(id, role, session) {
+  return updateUserProfile(id, { role }, session);
+}
+
+async function updateUserTeam(id, teamId, session) {
+  return updateUserProfile(id, { teamId }, session);
+}
+
+async function updateUserStatus(id, status, session) {
+  return updateUserProfile(id, { status }, session);
+}
+
+async function updatePasswordHash(id, passwordHash, session) {
+  const result = await withSession(
+    User.updateOne({ _id: id }, { $set: { passwordHash } }),
+    session,
+  );
+  return result.matchedCount === 1;
+}
+
+async function updateLastLogin(id, lastLoginAt, session) {
+  const result = await withSession(
+    User.updateOne({ _id: id }, { $set: { lastLoginAt } }),
+    session,
+  );
+  return result.matchedCount === 1;
+}
+
+export default {
+  createUser,
+  findUserById,
+  findAuthUserByEmail,
+  existsUserByEmail,
+  countUsers,
+  findUsers,
+  updateUserProfile,
+  updateUserRole,
+  updateUserTeam,
+  updateUserStatus,
+  updatePasswordHash,
+  updateLastLogin,
 };
-export default userRepository;

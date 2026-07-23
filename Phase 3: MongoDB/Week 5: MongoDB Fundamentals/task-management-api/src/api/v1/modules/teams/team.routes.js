@@ -1,0 +1,15 @@
+import { Router } from "express";
+import ROLES from "../../../../constants/roles.js";
+import protect from "../../../../middlewares/auth/auth.middleware.js";
+import authorize from "../../../../middlewares/auth/authorize.middleware.js";
+import asyncHandler from "../../../../middlewares/core/asyncHandler.js";
+import validate from "../../../../middlewares/validation/validation.js";
+import { createTeamSchema, listTeamsSchema, teamIdSchema, updateTeamSchema } from "./schemas/team.schema.js";
+import { createTeam, getTeam, listTeams, updateTeam } from "./team.controller.js";
+const router = Router();
+router.use(protect, authorize(ROLES.SYSTEM_ADMIN));
+router.get("/", validate({ query: listTeamsSchema }), asyncHandler(listTeams));
+router.post("/", validate({ body: createTeamSchema }), asyncHandler(createTeam));
+router.get("/:id", validate({ params: teamIdSchema }), asyncHandler(getTeam));
+router.patch("/:id", validate({ params: teamIdSchema, body: updateTeamSchema }), asyncHandler(updateTeam));
+export default router;

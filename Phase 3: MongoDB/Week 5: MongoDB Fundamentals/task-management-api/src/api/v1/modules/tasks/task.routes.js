@@ -1,52 +1,24 @@
 import { Router } from "express";
-import {
-  createTask,
-  getAllTasks,
-  getTaskById,
-  deleteTask,
-  updateTask,
-  getTaskByUserId,
-} from "./task.controller.js";
-
+import ROLES from "../../../../constants/roles.js";
+import protect from "../../../../middlewares/auth/auth.middleware.js";
+import authorize from "../../../../middlewares/auth/authorize.middleware.js";
 import asyncHandler from "../../../../middlewares/core/asyncHandler.js";
 import validate from "../../../../middlewares/validation/validation.js";
-import { taskIdSchema } from "./schemas/task-id.schema.js";
-import { userIdSchema } from "../users/schemas/user-id.schema.js";
 import { createTaskSchema } from "./schemas/create-task.schema.js";
+import { taskIdSchema, taskChildIdSchema } from "./schemas/task-id.schema.js";
 import { updateTaskSchema } from "./schemas/update-task.schema.js";
-
+import { attachmentSchema, commentSchema, listTasksSchema, statusSchema } from "./schemas/task-actions.schema.js";
+import * as controller from "./task.controller.js";
 const router = Router();
-
-router.get("/", asyncHandler(getAllTasks));
-
-router.get(
-  "/:id",
-  validate({ params: taskIdSchema }),
-  asyncHandler(getTaskById),
-);
-
-router.get(
-  "/user/:id",
-  validate({ params: userIdSchema }),
-  asyncHandler(getTaskByUserId),
-);
-
-router.post(
-  "/",
-  validate({ body: createTaskSchema }),
-  asyncHandler(createTask),
-);
-
-router.patch(
-  "/:id",
-  validate({ params: taskIdSchema, body: updateTaskSchema }),
-  asyncHandler(updateTask),
-);
-
-router.delete(
-  "/:id",
-  validate({ params: taskIdSchema }),
-  asyncHandler(deleteTask),
-);
-
+router.use(protect);
+router.get("/", validate({ query: listTasksSchema }), asyncHandler(controller.listTasks));
+router.post("/", authorize(ROLES.SYSTEM_ADMIN, ROLES.TEAM_MANAGER), validate({ body: createTaskSchema }), asyncHandler(controller.createTask));
+router.get("/:id", validate({ params: taskIdSchema }), asyncHandler(controller.getTask));
+router.patch("/:id", authorize(ROLES.SYSTEM_ADMIN, ROLES.TEAM_MANAGER), validate({ params: taskIdSchema, body: updateTaskSchema }), asyncHandler(controller.updateTask));
+router.patch("/:id/status", validate({ params: taskIdSchema, body: statusSchema }), asyncHandler(controller.updateStatus));
+router.post("/:id/comments", validate({ params: taskIdSchema, body: commentSchema }), asyncHandler(controller.addComment));
+router.patch("/:id/comments/:childId", validate({ params: taskChildIdSchema, body: commentSchema }), asyncHandler(controller.updateComment));
+router.delete("/:id/comments/:childId", validate({ params: taskChildIdSchema }), asyncHandler(controller.removeComment));
+router.post("/:id/attachments", validate({ params: taskIdSchema, body: attachmentSchema }), asyncHandler(controller.addAttachment));
+router.delete("/:id/attachments/:childId", validate({ params: taskChildIdSchema }), asyncHandler(controller.removeAttachment));
 export default router;

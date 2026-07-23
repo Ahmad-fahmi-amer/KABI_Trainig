@@ -1,6 +1,9 @@
 const ROLES = {
-  ADMIN: "ADMIN",
-  USER: "USER",
+  SYSTEM_ADMIN: "SYSTEM_ADMIN",
+  TEAM_MANAGER: "TEAM_MANAGER",
+  EMPLOYEE: "EMPLOYEE",
 };
 
-export default ROLES;
+export const ROLE_VALUES = Object.freeze(Object.values(ROLES));
+
+export default Object.freeze(ROLES);

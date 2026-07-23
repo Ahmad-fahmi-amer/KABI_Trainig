@@ -1,60 +1,63 @@
 import { toUserResponse, toUsersResponse } from "./mappers/user.mapper.js";
 import userService from "./user.service.js";
-// const { id, email } = req.validated.params;
-// const { body, query } = req.validated;
-// const me = req.user;
+
 export async function getAllUsers(req, res) {
-  const users = await userService.getAllUsers();
-  return res.success(toUsersResponse(users), "Users retrieved successfully");
+  return res.success(
+    toUsersResponse(
+      await userService.getAllUsers(req.validated.query, req.user),
+    ),
+  );
 }
-
 export async function getUserById(req, res) {
-  const user = await userService.getUserById(req.validated.params.id);
-  return res.success(toUserResponse(user), "user retrieved successfully");
+  return res.success(
+    toUserResponse(await userService.getUserById(req.validated.params.id)),
+  );
 }
-
-export async function getUserByEmail(req, res) {
-  const user = await userService.getUserByEmail(req.validated.params.email);
-  return res.success(toUserResponse(user), "user retrieved successfully");
-}
-
 export async function createUser(req, res) {
-  const user = await userService.createUser(req.validated.body);
+  const user = await userService.createUser(req.validated.body, req.user, {
+    requestId: req.requestId,
+  });
   return res.created(toUserResponse(user), "User created successfully");
 }
-
 export async function updateUser(req, res) {
   const user = await userService.updateUser(
     req.validated.params.id,
     req.validated.body,
+    req.user,
+    { requestId: req.requestId },
   );
-  res.success(toUserResponse(user), "user updated successfully");
+  return res.success(toUserResponse(user), "User updated successfully");
 }
-
-export async function deleteUser(req, res) {
-  await userService.deleteUser(req.validated.params.id);
-  return res.noContent();
-}
-
 export async function getMe(req, res) {
-  const user = await userService.getUserById(req.user.id);
-  return res.success(toUserResponse(user), "user retrieved successfully");
+  return res.success(
+    toUserResponse(await userService.getUserById(req.user._id)),
+  );
 }
-
-export async function deleteMe(req, res) {
-  await userService.deleteUser(req.user.id);
+export async function updateMe(req, res) {
+  return res.success(
+    toUserResponse(
+      await userService.updateProfile(req.user._id, req.validated.body),
+    ),
+  );
+}
+export async function changePassword(req, res) {
+  await userService.changePassword(req.user._id, req.validated.body);
   return res.noContent();
 }
-
-export async function updateMe(req, res) {
-  const user = await userService.updateUser(req.user.id, req.validated.body);
-  return res.success(toUserResponse(user), "user updated successfully");
-}
-
-export async function changePassword(req, res) {
-  const user = await userService.changePassword(
-    req.user.id,
-    req.validated.body,
+export async function resetPassword(req, res) {
+  await userService.resetPassword(
+    req.validated.params.id,
+    req.validated.body.newPassword,
+    req.user,
   );
-  return res.success(toUserResponse(user), "password changed successfully");
+  return res.noContent();
+}
+export async function issuePasswordResetToken(req, res) {
+  return res.created(
+    await userService.issuePasswordResetToken(
+      req.validated.params.id,
+      req.user,
+    ),
+    "Password reset token created; it will only be returned once",
+  );
 }

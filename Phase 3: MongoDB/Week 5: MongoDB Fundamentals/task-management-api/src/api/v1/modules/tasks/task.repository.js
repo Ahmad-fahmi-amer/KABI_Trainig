@@ -1,48 +1,196 @@
-import { tasks } from "../../../../../data/tasks.data.js";
-function findAll() {
-  return tasks;
-}
-function findById(id) {
-  const task = tasks.find((task) => task.id === id) || null;
-  return task;
+import Task from "./task.model.js";
+import { TASK_STATUS } from "../../../../constants/task.js";
+function withSession(query, session) {
+  return session ? query.session(session) : query;
 }
 
-function findByUserId(userId) {
-  const task = tasks.filter((task) => task.userId === userId);
-  return task;
+async function createTask(data, session) {
+  const task = new Task(data);
+  await task.save({ session });
+  return task.toObject();
 }
 
-function create(task) {
-  tasks.push(task);
-  return task;
+async function findTaskById(id, session) {
+  return withSession(Task.findById(id).lean(), session);
 }
 
-function update(id, updates) {
-  const task = tasks.find((task) => task.id === id);
+async function findTasks(query) {
+  const {
+    assigneeId,
+    teamId,
+    status,
+    excludedStatuses,
+    priority,
+    overdue,
+    search,
+    page,
+    limit,
+  } = query;
 
-  if (!task) {
-    return null;
+  const filter = {};
+
+  if (assigneeId) {
+    filter.assigneeId = assigneeId;
   }
 
-  Object.assign(task, updates);
-
-  return task;
-}
-function remove(id) {
-  const index = tasks.findIndex((task) => task.id === id);
-
-  if (index === -1) {
-    return null;
+  if (teamId) {
+    filter.teamId = teamId;
   }
 
-  return tasks.splice(index, 1)[0];
+  if (status) {
+    filter.status = status;
+  } else if (excludedStatuses?.length) {
+    filter.status = {
+      $nin: excludedStatuses,
+    };
+  }
+
+  if (priority) {
+    filter.priority = priority;
+  }
+
+  if (overdue) {
+    filter.dueDate = {
+      $lt: new Date(),
+    };
+  }
+
+  if (search) {
+    filter.$text = {
+      $search: search,
+    };
+  }
+
+  const projection = search
+    ? {
+        score: {
+          $meta: "textScore",
+        },
+      }
+    : undefined;
+
+  const sort = search
+    ? {
+        score: {
+          $meta: "textScore",
+        },
+        createdAt: -1,
+        _id: -1,
+      }
+    : {
+        dueDate: 1,
+        createdAt: -1,
+        _id: -1,
+      };
+
+  const skip = (page - 1) * limit;
+
+  const [items, total] = await Promise.all([
+    Task.find(filter, projection).sort(sort).skip(skip).limit(limit).lean(),
+
+    Task.countDocuments(filter),
+  ]);
+
+  return {
+    items,
+    page,
+    limit,
+    total,
+    totalPages: Math.ceil(total / limit),
+  };
 }
-const taskRepository = {
-  findAll,
-  findById,
-  findByUserId,
-  update,
-  create,
-  remove,
+
+async function updateTaskDetails(id, data, session) {
+  return withSession(
+    Task.findByIdAndUpdate(
+      id,
+      { $set: data },
+      { new: true, runValidators: true },
+    ).lean(),
+    session,
+  );
+}
+
+async function updateTaskStatus(id, expectedStatus, status, session) {
+  return withSession(
+    Task.findOneAndUpdate(
+      { _id: id, status: expectedStatus },
+      { $set: { status } },
+      { new: true, runValidators: true },
+    ).lean(),
+    session,
+  );
+}
+
+async function addComment(taskId, comment, session) {
+  return withSession(
+    Task.findOneAndUpdate(
+      { _id: taskId, "comments.39": { $exists: false } },
+      { $push: { comments: comment } },
+      { new: true, runValidators: true },
+    ).lean(),
+    session,
+  );
+}
+
+async function updateComment(taskId, commentId, content, session) {
+  return withSession(
+    Task.findOneAndUpdate(
+      { _id: taskId, "comments._id": commentId },
+      {
+        $set: {
+          "comments.$.content": content,
+          "comments.$.updatedAt": new Date(),
+        },
+      },
+      { new: true, runValidators: true },
+    ).lean(),
+    session,
+  );
+}
+
+async function removeComment(taskId, commentId, session) {
+  return withSession(
+    Task.findOneAndUpdate(
+      { _id: taskId, "comments._id": commentId },
+      { $pull: { comments: { _id: commentId } } },
+      { new: true },
+    ).lean(),
+    session,
+  );
+}
+
+async function addAttachment(taskId, attachment, session) {
+  return withSession(
+    Task.findOneAndUpdate(
+      { _id: taskId, "attachments.9": { $exists: false } },
+      { $push: { attachments: attachment } },
+      { new: true, runValidators: true },
+    ).lean(),
+    session,
+  );
+}
+
+async function removeAttachment(taskId, attachmentId, session) {
+  return withSession(
+    Task.findOneAndUpdate(
+      { _id: taskId, "attachments._id": attachmentId },
+      { $pull: { attachments: { _id: attachmentId } } },
+      { new: true },
+    ).lean(),
+    session,
+  );
+}
+
+export default {
+  createTask,
+  findTaskById,
+  findTasks,
+  updateTaskDetails,
+  updateTaskStatus,
+  addComment,
+  updateComment,
+  removeComment,
+  addAttachment,
+  removeAttachment,
 };
-export default taskRepository;

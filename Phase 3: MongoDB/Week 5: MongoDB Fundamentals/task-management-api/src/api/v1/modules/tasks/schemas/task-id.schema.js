@@ -1,8 +1,5 @@
 import { z } from "zod";
+import { objectIdSchema } from "../../users/schemas/user.fields.js";
 
-export const taskIdSchema = z.object({
-  id: z.coerce
-    .number()
-    .int("Task id must be an integer.")
-    .positive("Task id must be positive."),
-});
+export const taskIdSchema = z.object({ id: objectIdSchema });
+export const taskChildIdSchema = z.object({ id: objectIdSchema, childId: objectIdSchema });

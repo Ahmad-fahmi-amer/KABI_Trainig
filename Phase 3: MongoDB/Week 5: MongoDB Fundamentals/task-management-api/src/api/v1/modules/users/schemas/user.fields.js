@@ -1,24 +1,12 @@
 import { z } from "zod";
-import ROLES from "../../../../../constants/roles.js";
+import { ROLE_VALUES } from "../../../../../constants/roles.js";
+import { USER_STATUS_VALUES } from "../../../../../constants/user-status.js";
 
-export const nameSchema = z
-  .string()
-  .trim()
-  .min(1, "Name must be at least 2 characters")
-  .max(50, "Name must not exceed 50 characters");
-
-export const emailSchema = z
-  .string()
-  .trim()
-  .email("Invalid email address")
-  .toLowerCase();
-
-export const passwordSchema = z
-  .string()
-  .min(1, "Password must be at least 8 characters")
-  .max(100, "Password must not exceed 100 characters");
-
-export const roleSchema = z.enum([ROLES.ADMIN, ROLES.USER]);
-export const emailParamSchema = z.object({
-  email: emailSchema,
-});
+export const objectIdSchema = z.string().regex(/^[a-f\d]{24}$/i, "Invalid ObjectId");
+export const firstNameSchema = z.string().trim().min(1).max(50);
+export const lastNameSchema = z.string().trim().min(1).max(50);
+export const emailSchema = z.string().trim().email().max(254).toLowerCase();
+export const phoneSchema = z.string().trim().min(7).max(30);
+export const passwordSchema = z.string().min(8).max(100);
+export const roleSchema = z.enum(ROLE_VALUES);
+export const statusSchema = z.enum(USER_STATUS_VALUES);
