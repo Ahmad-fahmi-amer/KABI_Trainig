@@ -1,0 +1,12 @@
+import { Router } from "express";
+import protect from "../../../../middlewares/auth/auth.middleware.js";
+import asyncHandler from "../../../../middlewares/core/asyncHandler.js";
+import validate from "../../../../middlewares/validation/validation.js";
+import { listNotificationsSchema, notificationIdSchema } from "./schemas/notification.schema.js";
+import * as controller from "./notification.controller.js";
+const router = Router(); router.use(protect);
+router.get("/", validate({ query: listNotificationsSchema }), asyncHandler(controller.list));
+router.get("/unread-count", asyncHandler(controller.unreadCount));
+router.patch("/read-all", asyncHandler(controller.markAllRead));
+router.patch("/:id/read", validate({ params: notificationIdSchema }), asyncHandler(controller.markRead));
+export default router;
