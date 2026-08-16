@@ -40,7 +40,7 @@ async function getTask(id, actor) {
 
     if (!task) throw new NotFoundError("Task not found");
     requireAccess(task, actor);
-    await taskCache.set(task);
+    await taskCache.set(task._id, task);
   }
   return task;
 }
@@ -151,7 +151,7 @@ async function updateTask(id, data, actor) {
 
     return task;
   });
-  await taskCache.invalidate(id);
+  await taskCache.del(id);
   await notificationCounterCache.increment(task.assigneeId);
   return task;
 }
@@ -193,7 +193,7 @@ async function updateStatus(id, status, actor) {
     );
     return task;
   });
-  await taskCache.invalidate(id);
+  await taskCache.del(id);
   await notificationCounterCache.increment(task.assigneeId);
   return task;
 }
@@ -235,7 +235,7 @@ async function addComment(id, data, actor) {
       notificationRecipientId: shouldNotify ? current.assigneeId : null,
     };
   });
-  await taskCache.invalidate(id);
+  await taskCache.del(id);
   if (result.notificationRecipientId) {
     await notificationCounterCache.increment(result.notificationRecipientId);
   }
@@ -273,7 +273,7 @@ async function updateComment(id, commentId, data, actor) {
     );
     return task;
   });
-  await taskCache.invalidate(id);
+  await taskCache.del(id);
   return task;
 }
 async function removeComment(id, commentId, actor) {
@@ -301,7 +301,7 @@ async function removeComment(id, commentId, actor) {
     );
     return task;
   });
-  await taskCache.invalidate(id);
+  await taskCache.del(id);
   return task;
 }
 async function addAttachment(id, data, actor) {
@@ -346,7 +346,7 @@ async function addAttachment(id, data, actor) {
   if (result.notificationRecipientId) {
     await notificationCounterCache.increment(result.notificationRecipientId);
   }
-  await taskCache.invalidate(id);
+  await taskCache.del(id);
   return task;
 }
 async function removeAttachment(id, attachmentId, actor) {
@@ -378,7 +378,7 @@ async function removeAttachment(id, attachmentId, actor) {
     );
     return task;
   });
-  await taskCache.invalidate(id);
+  await taskCache.del(id);
   return task;
 }
 export default {

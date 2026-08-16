@@ -15,3 +15,11 @@ router.use("/notifications", notificationRouter);
 router.use("/activity-logs", activityLogRouter);
 
 export default router;
+async function getProfile() {
+  try {
+    const user = await getUser();
+    return user.profile;
+  } catch (error) {
+    console.log({ message: "failed to get profile", error });
+  }
+}

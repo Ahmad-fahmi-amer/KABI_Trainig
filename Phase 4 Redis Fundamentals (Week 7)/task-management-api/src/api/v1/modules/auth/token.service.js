@@ -18,16 +18,23 @@ function generateTokenPair(user) {
   const accessToken = jwt.sign(payload, auth.JWT_ACCESS_SECRET, {
     expiresIn: auth.JWT_ACCESS_EXPIRES_IN,
   });
-  const refreshToken = jwt.sign({ ...payload, sid: String(sessionId) }, auth.JWT_REFRESH_SECRET, {
-    expiresIn: auth.JWT_REFRESH_EXPIRES_IN,
-  });
+  const refreshToken = jwt.sign(
+    { ...payload, sid: String(sessionId) },
+    auth.JWT_REFRESH_SECRET,
+    {
+      expiresIn: auth.JWT_REFRESH_EXPIRES_IN,
+    },
+  );
   const decoded = jwt.decode(refreshToken);
   return {
     accessToken,
     refreshToken,
     sessionId,
     expiresAt: new Date(decoded.exp * 1000),
-    refreshTokenHash: crypto.createHash("sha256").update(refreshToken).digest("hex"),
+    refreshTokenHash: crypto
+      .createHash("sha256")
+      .update(refreshToken)
+      .digest("hex"),
   };
 }
 

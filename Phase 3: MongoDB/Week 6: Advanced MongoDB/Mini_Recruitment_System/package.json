@@ -1,0 +1,24 @@
+{
+  "name": "mini-recruitment-system-api",
+  "version": "1.0.0",
+  "description": "Production-oriented Mini Recruitment System REST API",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "check": "find src -type f -name '*.js' -print0 | xargs -0 -n1 node --check",
+    "test": "node --test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^9.7.4",
+    "winston": "^3.19.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {}
+}

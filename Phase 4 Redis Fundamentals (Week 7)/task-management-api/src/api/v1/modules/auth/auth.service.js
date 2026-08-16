@@ -169,7 +169,7 @@ async function refresh(refreshToken, context = {}) {
     );
   }
 
-  await sessionCache.invalidate(oldSession._id, oldSession.userId);
+  await sessionCache.del(oldSession._id, oldSession.userId);
 
   await sessionCache.set(rotation.newSession);
 
@@ -229,7 +229,7 @@ async function logout(refreshToken, context = {}) {
     });
   }
 
-  await sessionCache.invalidate(authSession._id, authSession.userId);
+  await sessionCache.del(authSession._id, authSession.userId);
 }
 
 async function confirmPasswordReset(token, newPassword) {

@@ -1,13 +1,8 @@
 import redisClient from "../config/redis.client.js";
 import logger from "../logger/logger.js";
+import RedisExecutor from "./RedisExecutor.js";
 
-function buildSessionKey(sessionId) {
-  return `session:${sessionId}`;
-}
-
-function buildUserSessionsKey(userId) {
-  return `sessions:user:${userId}`;
-}
+const redisExecutor = new RedisExecutor({ logger, client: redisClient });
 
 function serializeSession(session) {
   return JSON.stringify({
@@ -32,51 +27,49 @@ function deserializeSession(value) {
   };
 }
 
+function buildUserSessionsKey(userId) {
+  return `sessions:user:${userId}`;
+}
+
+function buildSessionKey(sessionId) {
+  return `session:${sessionId}`;
+}
+
 async function get(sessionId) {
-  if (!redisClient.isReady) {
-    return null;
-  }
-
   const normalizedSessionId = String(sessionId);
+  const key = buildSessionKey(normalizedSessionId);
+  return redisExecutor.execute({
+    metadata: { namespace: "session", key: normalizedSessionId },
+    failureEvent: "session.cache_read_failed",
+    fallback: null,
+    operation: async () => {
+      const cachedSession = await redisClient.get(key);
 
-  try {
-    const cachedSession = await redisClient.get(
-      buildSessionKey(normalizedSessionId),
-    );
+      if (cachedSession === null) {
+        logger.debug({
+          event: "session.cache_miss",
+          sessionId: normalizedSessionId,
+        });
 
-    if (!cachedSession) {
+        return null;
+      }
+
       logger.debug({
-        event: "session.cache_miss",
+        event: "session.cache_hit",
         sessionId: normalizedSessionId,
       });
 
-      return null;
-    }
-
-    logger.debug({
-      event: "session.cache_hit",
-      sessionId: normalizedSessionId,
-    });
-
-    return deserializeSession(cachedSession);
-  } catch (error) {
-    logger.warn({
-      event: "session.cache_read_failed",
-      sessionId: normalizedSessionId,
-      message: error.message,
-    });
-
-    return null;
-  }
+      return deserializeSession(cachedSession);
+    },
+  });
 }
 
 async function set(session) {
-  if (!redisClient.isReady) {
-    return;
-  }
+  const normalizedSessionId = String(session._id);
+  const normalizedUserId = String(session.userId);
 
-  const sessionId = String(session._id);
-  const userId = String(session.userId);
+  const sessionKey = buildSessionKey(normalizedSessionId);
+  const userSessionsKey = buildUserSessionsKey(normalizedUserId);
 
   const ttlSeconds = Math.floor(
     (new Date(session.expiresAt).getTime() - Date.now()) / 1000,
@@ -85,90 +78,77 @@ async function set(session) {
   if (ttlSeconds <= 0) {
     return;
   }
+  return redisExecutor.execute({
+    metadata: { namespace: "session", key: normalizedSessionId },
+    failureEvent: "session.cache_write_failed",
+    fallback: false,
+    operation: async () => {
+      const currentUserSessionsTtl = await redisClient.ttl(userSessionsKey);
 
-  const sessionKey = buildSessionKey(sessionId);
-  const userSessionsKey = buildUserSessionsKey(userId);
+      const userSessionsTtl = Math.max(currentUserSessionsTtl, ttlSeconds);
 
-  try {
-    const currentUserSessionsTtl = await redisClient.ttl(userSessionsKey);
-
-    const userSessionsTtl = Math.max(currentUserSessionsTtl, ttlSeconds);
-
-    await redisClient
-      .multi()
-      .set(sessionKey, serializeSession(session), {
-        EX: ttlSeconds,
-      })
-      .sAdd(userSessionsKey, sessionId)
-      .expire(userSessionsKey, userSessionsTtl)
-      .exec();
-  } catch (error) {
-    logger.warn({
-      event: "session.cache_write_failed",
-      sessionId,
-      userId,
-      message: error.message,
-    });
-  }
+      await redisClient
+        .multi()
+        .set(sessionKey, serializeSession(session), {
+          EX: ttlSeconds,
+        })
+        .sAdd(userSessionsKey, normalizedSessionId)
+        .expire(userSessionsKey, userSessionsTtl)
+        .exec();
+    },
+  });
 }
 
-async function invalidate(sessionId, userId) {
-  if (!redisClient.isReady) {
-    return;
-  }
-
+async function del(sessionId, userId) {
   const normalizedSessionId = String(sessionId);
   const normalizedUserId = String(userId);
 
-  try {
-    await redisClient
-      .multi()
-      .del(buildSessionKey(normalizedSessionId))
-      .sRem(buildUserSessionsKey(normalizedUserId), normalizedSessionId)
-      .exec();
-  } catch (error) {
-    logger.warn({
-      event: "session.cache_invalidation_failed",
-      sessionId: normalizedSessionId,
-      userId: normalizedUserId,
-      message: error.message,
-    });
-  }
+  const sessionKey = buildSessionKey(normalizedSessionId);
+  const userSessionsKey = buildUserSessionsKey(normalizedUserId);
+
+  return redisExecutor.execute({
+    metadata: { namespace: "session", key: normalizedSessionId },
+    failureEvent: "session.cache_invalidation_failed",
+    fallback: false,
+    operation: async () => {
+      await redisClient
+        .multi()
+        .del(buildSessionKey(normalizedSessionId))
+        .sRem(buildUserSessionsKey(normalizedUserId), normalizedSessionId)
+        .exec();
+    },
+  });
 }
 
 async function invalidateAllForUser(userId) {
-  if (!redisClient.isReady) {
-    return;
-  }
-
   const normalizedUserId = String(userId);
+
   const userSessionsKey = buildUserSessionsKey(normalizedUserId);
 
-  try {
-    const sessionIds = await redisClient.sMembers(userSessionsKey);
+  return redisExecutor.execute({
+    metadata: { namespace: "user:sessions", key: normalizedUserId },
+    failureEvent: "session.cache_user_invalidation_failed",
+    fallback: false,
+    operation: async () => {
+      const sessionIds = await redisClient.sMembers(userSessionsKey);
 
-    const transaction = redisClient.multi();
+      const transaction = redisClient.multi();
 
-    for (const sessionId of sessionIds) {
-      transaction.del(buildSessionKey(sessionId));
-    }
+      for (const sessionId of sessionIds) {
+        transaction.del(buildSessionKey(sessionId));
+      }
 
-    transaction.del(userSessionsKey);
+      transaction.del(userSessionsKey);
 
-    await transaction.exec();
-  } catch (error) {
-    logger.warn({
-      event: "session.cache_user_invalidation_failed",
-      userId: normalizedUserId,
-      message: error.message,
-    });
-  }
+      await transaction.exec();
+    },
+  });
 }
 
 const sessionCache = {
   get,
   set,
-  invalidate,
+  del,
   invalidateAllForUser,
 };
 

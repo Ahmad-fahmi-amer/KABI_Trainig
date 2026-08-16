@@ -197,6 +197,7 @@ async function issuePasswordResetToken(id, actor) {
       session,
     );
   });
+
   return { token, expiresAt };
 }
 

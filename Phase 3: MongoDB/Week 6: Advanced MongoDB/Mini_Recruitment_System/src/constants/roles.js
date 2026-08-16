@@ -1,0 +1,7 @@
+const ROLES = Object.freeze({
+  CANDIDATE: "CANDIDATE",
+  RECRUITER: "RECRUITER",
+  RECRUITMENT_ADMIN: "RECRUITMENT_ADMIN",
+});
+
+export default ROLES;

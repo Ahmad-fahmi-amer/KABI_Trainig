@@ -181,7 +181,9 @@ async function removeAttachment(taskId, attachmentId, session) {
     session,
   );
 }
-
+async function bb() {
+  const tasks = Task.aggregate({});
+}
 export default {
   createTask,
   findTaskById,

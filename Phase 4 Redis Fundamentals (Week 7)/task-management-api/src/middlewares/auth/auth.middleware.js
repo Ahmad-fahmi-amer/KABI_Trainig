@@ -23,7 +23,16 @@ async function protect(req, res, next) {
     if (user.status !== USER_STATUS.ACTIVE) {
       throw new UnauthorizedError("user is inactive");
     }
-    await userAuthCache.set(user);
+    const { _id, status, role, teamId } = user;
+
+    const authUser = {
+      _id,
+      status,
+      role,
+      teamId,
+    };
+
+    await userAuthCache.set(_id, authUser);
   }
 
   req.user = user;

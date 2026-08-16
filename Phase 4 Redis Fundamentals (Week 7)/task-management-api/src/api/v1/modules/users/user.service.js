@@ -135,7 +135,7 @@ async function updateUser(id, data, actor, context = {}) {
   if (data.status === USER_STATUS.INACTIVE) {
     await sessionCache.invalidateAllForUser(id);
   }
-  await userAuthCache.invalidate(id);
+  await userAuthCache.del(id);
 
   return user;
 }
